@@ -8,6 +8,8 @@ import datasets
 import pandas as pd
 
 from pathlib import Path
+from torch import Dataset
+from torch import no_grad
 from typing import Iterable, Sequence
 
 from core_utils.llm.llm_pipeline import AbstractLLMPipeline
@@ -49,6 +51,16 @@ class RawDataPreprocessor(AbstractRawDataPreprocessor):
         Returns:
             dict: Dataset key properties
         """
+        df = self._raw_data
+        analysis = {'dataset_number_of_samples': len(df),
+                    'dataset_columns': 	len(df.columns),
+                    'dataset_duplicates': len(df[df.duplicated()]),
+                    'dataset_empty_rows': len(df[df.isna().any(axis=1)])}
+
+        column = df['source'].dropna()
+        analysis['dataset_sample_min_len'] = min(column.apply(len))
+        analysis['dataset_sample_max_len'] = max(column.apply(len))
+        return analysis
 
     @report_time
     def transform(self) -> None:
@@ -90,7 +102,7 @@ class TaskDataset(Dataset):
         """
 
     @property
-    def data(self) -> DataFrame:
+    def data(self) -> pd.DataFrame:
         """
         Property with access to preprocessed DataFrame.
 
@@ -147,7 +159,7 @@ class LLMPipeline(AbstractLLMPipeline):
             pd.DataFrame: Data with predictions
         """
 
-    @torch.no_grad()
+    @no_grad()
     def _infer_batch(self, sample_batch: Sequence[tuple[str, ...]]) -> list[str]:
         """
         Infer model on a single batch.
