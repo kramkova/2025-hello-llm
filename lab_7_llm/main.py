@@ -15,7 +15,7 @@ from typing import Iterable, Sequence
 from core_utils.llm.llm_pipeline import AbstractLLMPipeline
 from core_utils.llm.metrics import Metrics
 from core_utils.llm.raw_data_importer import AbstractRawDataImporter
-from core_utils.llm.raw_data_preprocessor import AbstractRawDataPreprocessor
+from core_utils.llm.raw_data_preprocessor import AbstractRawDataPreprocessor, ColumnNames
 from core_utils.llm.task_evaluator import AbstractTaskEvaluator
 from core_utils.llm.time_decorator import report_time
 
@@ -33,7 +33,8 @@ class RawDataImporter(AbstractRawDataImporter):
         Raises:
             TypeError: In case of downloaded dataset is not pd.DataFrame
         """
-        self._raw_data = datasets.load_dataset(self._hf_name, split="validation", trust_remote_code=True).to_pandas()
+        self._raw_data = datasets.load_dataset(self._hf_name, split="validation",
+                                               revision="refs/convert/parquet").to_pandas()
 
         if not isinstance(self._raw_data, pd.DataFrame):
             raise TypeError('The downloaded dataset is not a pandas.DataFrame.')
@@ -67,6 +68,9 @@ class RawDataPreprocessor(AbstractRawDataPreprocessor):
         """
         Apply preprocessing transformations to the raw dataset.
         """
+        preprocessed = self._raw_data[['content', 'sentiment']]
+        preprocessed = preprocessed.rename(columns={"sentiment": ColumnNames.TARGET, "content": ColumnNames.SOURCE})
+        self._data = preprocessed
 
 
 class TaskDataset(Dataset):
