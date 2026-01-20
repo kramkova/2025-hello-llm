@@ -3,7 +3,6 @@ Starter for demonstration of laboratory work.
 """
 
 # pylint: disable=too-many-locals, undefined-variable, unused-import
-import json
 from pathlib import Path
 
 from config.lab_settings import LabSettings
@@ -21,7 +20,9 @@ def main() -> None:
     importer.obtain()
 
     preprocessor = RawDataPreprocessor(importer.raw_data)
-    print(preprocessor.analyze())
+    print('Dataset overview')
+    for feature in preprocessor.analyze().items():
+        print(f'{feature[0]}: {feature[1]}')
 
     result = preprocessor
     assert result is not None, "Demo does not work correctly"

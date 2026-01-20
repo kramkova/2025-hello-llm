@@ -6,10 +6,10 @@ Working with Large Language Models.
 # pylint: disable=too-few-public-methods, undefined-variable, too-many-arguments, super-init-not-called
 import datasets
 import pandas as pd
+import torch
 
 from pathlib import Path
-from torch import Dataset
-from torch import no_grad
+from torch.utils.data import Dataset
 from typing import Iterable, Sequence
 
 from core_utils.llm.llm_pipeline import AbstractLLMPipeline
@@ -33,7 +33,7 @@ class RawDataImporter(AbstractRawDataImporter):
         Raises:
             TypeError: In case of downloaded dataset is not pd.DataFrame
         """
-        self._raw_data = datasets.load_dataset(self._hf_name, split="val").to_pandas()
+        self._raw_data = datasets.load_dataset(self._hf_name, split="validation", trust_remote_code=True).to_pandas()
 
         if not isinstance(self._raw_data, pd.DataFrame):
             raise TypeError('The downloaded dataset is not a pandas.DataFrame.')
@@ -57,7 +57,7 @@ class RawDataPreprocessor(AbstractRawDataPreprocessor):
                     'dataset_duplicates': len(df[df.duplicated()]),
                     'dataset_empty_rows': len(df[df.isna().any(axis=1)])}
 
-        column = df['source'].dropna()
+        column = df['content'].dropna()
         analysis['dataset_sample_min_len'] = min(column.apply(len))
         analysis['dataset_sample_max_len'] = max(column.apply(len))
         return analysis
@@ -159,7 +159,7 @@ class LLMPipeline(AbstractLLMPipeline):
             pd.DataFrame: Data with predictions
         """
 
-    @no_grad()
+    @torch.no_grad()
     def _infer_batch(self, sample_batch: Sequence[tuple[str, ...]]) -> list[str]:
         """
         Infer model on a single batch.
