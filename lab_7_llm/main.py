@@ -10,6 +10,8 @@ import torch
 
 from pathlib import Path
 from torch.utils.data import Dataset
+from torchinfo import summary
+from transformers import AutoModelForSequenceClassification, BertTokenizerFast
 from typing import Iterable, Sequence
 
 from core_utils.llm.llm_pipeline import AbstractLLMPipeline
@@ -70,7 +72,7 @@ class RawDataPreprocessor(AbstractRawDataPreprocessor):
         """
         preprocessed = self._raw_data[['content', 'sentiment']]
         preprocessed = preprocessed.rename(columns={"sentiment": ColumnNames.TARGET, "content": ColumnNames.SOURCE})
-        preprocessed[ColumnNames.TARGET] = preprocessed[ColumnNames.TARGET].apply(lambda x: 0 if x == 'negative' else 1)
+        preprocessed[ColumnNames.TARGET] = preprocessed[ColumnNames.TARGET].apply(lambda x: 2 if x == 'negative' else 1)
         self._data = preprocessed
 
 
@@ -138,6 +140,13 @@ class LLMPipeline(AbstractLLMPipeline):
             batch_size (int): The size of the batch inside DataLoader
             device (str): The device for inference
         """
+        self._model_name = model_name
+        self._model = AutoModelForSequenceClassification.from_pretrained(model_name, return_dict=True)
+        self._dataset = dataset
+        self._device = device
+        self._tokenizer = BertTokenizerFast.from_pretrained(model_name)
+        self._batch_size = batch_size
+        self._max_length = max_length
 
     def analyze_model(self) -> dict:
         """
