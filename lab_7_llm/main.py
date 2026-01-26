@@ -11,7 +11,7 @@ import torch
 from pathlib import Path
 from torch.utils.data import Dataset
 from torchinfo import summary
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import BertForSequenceClassification, AutoTokenizer
 from typing import Iterable, Sequence
 
 from core_utils.llm.llm_pipeline import AbstractLLMPipeline
@@ -141,7 +141,7 @@ class LLMPipeline(AbstractLLMPipeline):
             device (str): The device for inference
         """
         super().__init__(model_name, dataset, max_length, batch_size, device)
-        self._model = AutoModelForSequenceClassification.from_pretrained(model_name)
+        self._model = BertForSequenceClassification.from_pretrained(model_name)
         self._tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     def analyze_model(self) -> dict:
@@ -154,14 +154,15 @@ class LLMPipeline(AbstractLLMPipeline):
         config = self._model.config
         ids = torch.ones(1, config.max_position_embeddings, dtype=torch.long)
         tokens = {"input_ids": ids, "attention_mask": ids}
-        stats = summary(self._model, input_data=tokens, device=self._device)
+        stats = summary(self._model, input_data=tokens, device=self._device, verbose=0)
+        print(stats.summary_list)
         analysis = {'input_shape': stats.input_size,
                     'embedding_size': config.max_position_embeddings,
-                    'output_shape': stats.summary_list,
+                    'output_shape': stats.summary_list[-1].output_size,
                     'num_trainable_params': stats.trainable_params,
                     'vocab_size': config.vocab_size,
                     'size': stats.total_param_bytes,
-                    'max_context_length': 0}
+                    'max_context_length': config.max_position_embeddings}
         return analysis
 
     @report_time
@@ -177,6 +178,7 @@ class LLMPipeline(AbstractLLMPipeline):
         """
         tokens = self._tokenizer(sample[0], return_tensors="pt")
 
+        self._model.eval()
         with torch.no_grad():
             output = self._model(**tokens)
 
