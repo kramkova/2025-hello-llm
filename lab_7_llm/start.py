@@ -35,8 +35,11 @@ def main() -> None:
     for k, v in pipeline.analyze_model().items():
         print(f'{k}: {v}')
 
-    print('\nLabel prediction for 1 sample:', pipeline.infer_sample(dataset[1]))
+    print('\nLabel prediction for 1 sample:\n', pipeline.infer_sample(dataset[0]))
+    print('\nLabel prediction for the dataset:\n', pipeline.infer_dataset())
 
+    # evaluator = TaskEvaluator(predictions_path, settings.parameters.metrics)
+    
     result = preprocessor
     assert result is not None, "Demo does not work correctly"
 

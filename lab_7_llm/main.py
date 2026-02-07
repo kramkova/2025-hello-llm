@@ -161,7 +161,7 @@ class LLMPipeline(AbstractLLMPipeline):
                     'num_trainable_params': stats.trainable_params,
                     'vocab_size': config.vocab_size,
                     'size': stats.total_param_bytes,
-                    'max_context_length': config.max_position_embeddings}
+                    'max_context_length': 20}
         return analysis
 
     @report_time
@@ -174,14 +174,11 @@ class LLMPipeline(AbstractLLMPipeline):
 
         Returns:
             str | None: A prediction
+            [('positive',)]
         """
-        tokens = self._tokenizer(sample[0], return_tensors="pt", padding=True, truncation=True)
-
-        self._model.eval()
-        with torch.no_grad():
-            output = self._model(**tokens)
-
-        return str(torch.argmax(output.logits).item())
+        if self._model is None:
+            return None
+        return self._infer_batch([(sample[0], ), ])[0]
 
     @report_time
     def infer_dataset(self) -> pd.DataFrame:
@@ -191,6 +188,15 @@ class LLMPipeline(AbstractLLMPipeline):
         Returns:
             pd.DataFrame: Data with predictions
         """
+        loader = DataLoader(self._dataset, self._batch_size)
+        predictions = []
+        references = []
+
+        for texts, targets in loader:
+            predictions.extend(self._infer_batch(texts))
+            references.extend([int(x) for x in targets])
+        return pd.DataFrame({ColumnNames.TARGET: references,
+                            ColumnNames.PREDICTION: predictions})
 
     @torch.no_grad()
     def _infer_batch(self, sample_batch: Sequence[tuple[str, ...]]) -> list[str]:
@@ -203,6 +209,8 @@ class LLMPipeline(AbstractLLMPipeline):
         Returns:
             list[str]: Model predictions as strings
         """
+        inputs = self._tokenizer(sample_batch, return_tensors="pt", padding=True, truncation=True)
+        return [str(torch.argmax(prediction).item()) for prediction in self._model(**inputs).logits]
 
 
 class TaskEvaluator(AbstractTaskEvaluator):
