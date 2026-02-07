@@ -176,9 +176,9 @@ class LLMPipeline(AbstractLLMPipeline):
             str | None: A prediction
             [('positive',)]
         """
-        if self._model is None:
+        if not self._model or not isinstance(sample, tuple):
             return None
-        return self._infer_batch([(sample[0], ), ])[0]
+        return self._infer_batch(sample[0])[0]
 
     @report_time
     def infer_dataset(self) -> pd.DataFrame:
