@@ -8,6 +8,7 @@ import datasets
 import pandas as pd
 import torch
 
+from evaluate import load
 from pathlib import Path
 from torch.utils.data import DataLoader, Dataset
 from torchinfo import summary
@@ -226,6 +227,7 @@ class TaskEvaluator(AbstractTaskEvaluator):
             data_path (pathlib.Path): Path to predictions
             metrics (Iterable[Metrics]): List of metrics to check
         """
+        super().__init__(data_path, metrics)
 
     def run(self) -> dict:
         """
@@ -234,3 +236,11 @@ class TaskEvaluator(AbstractTaskEvaluator):
         Returns:
             dict: A dictionary containing information about the calculated metric
         """
+        data = pd.read_csv(self._data_path)
+        scores = {}
+
+        for metric in self._metrics:
+            scores[metric] = load(metric).compute(references=data[ColumnNames.TARGET.value],
+                                                  predictions=data[ColumnNames.PREDICTION.value],
+                                                  average='micro')
+        return scores

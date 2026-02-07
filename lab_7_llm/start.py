@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from core_utils.llm.time_decorator import report_time
-from lab_7_llm.main import LLMPipeline, RawDataImporter, RawDataPreprocessor, TaskDataset
+from lab_7_llm.main import LLMPipeline, RawDataImporter, RawDataPreprocessor, TaskDataset, TaskEvaluator
 
 
 @report_time
@@ -30,7 +30,7 @@ def main() -> None:
     preprocessor.transform()
     dataset = TaskDataset(preprocessor.data.head(100))
 
-    pipeline = LLMPipeline(settings['parameters']['model'], dataset, 120, 1, 'cpu')
+    pipeline = LLMPipeline(settings['parameters']['model'], dataset, 120, 64, 'cpu')
     print('\nModel overview')
     for k, v in pipeline.analyze_model().items():
         print(f'{k}: {v}')
@@ -38,9 +38,15 @@ def main() -> None:
     print('\nLabel prediction for 1 sample:\n', pipeline.infer_sample(dataset[0]))
     print('\nLabel prediction for the dataset:\n', pipeline.infer_dataset())
 
-    # evaluator = TaskEvaluator(predictions_path, settings.parameters.metrics)
-    
-    result = preprocessor
+    predictions_path = Path(__file__).parent / 'dist' / 'predictions.csv'
+    predictions_path.parent.mkdir(exist_ok=True)
+    if not predictions_path.exists():
+        pipeline.infer_dataset().to_csv(predictions_path)
+
+    evaluator = TaskEvaluator(predictions_path, settings['parameters']['metrics'])
+    result = evaluator.run()
+    print(result)
+
     assert result is not None, "Demo does not work correctly"
 
 
