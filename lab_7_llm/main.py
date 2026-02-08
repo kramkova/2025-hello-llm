@@ -76,7 +76,7 @@ class RawDataPreprocessor(AbstractRawDataPreprocessor):
         preprocessed = preprocessed.rename(columns={"sentiment": ColumnNames.TARGET,
                                                     "content": ColumnNames.SOURCE})
         preprocessed[ColumnNames.TARGET] = (preprocessed[ColumnNames.TARGET].
-                                            apply(lambda x: 1 if x == 'positive' else 2))
+                                            apply(lambda x: "1" if x == 'positive' else "2"))
         self._data = preprocessed
 
 
@@ -159,7 +159,7 @@ class LLMPipeline(AbstractLLMPipeline):
             return {}
 
         config = self._model.config
-        ids = torch.ones(1, int(config.max_position_embeddings), dtype=torch.long)
+        ids = torch.ones(1, getattr(config, 'max_position_embeddings'), dtype=torch.long)
         tokens = {"input_ids": ids, "attention_mask": ids}
         stats = summary(self._model, input_data=tokens, device=self._device, verbose=0)
         analysis = {'input_shape': {k: list(v) for k, v in stats.input_size.items()},
@@ -168,7 +168,7 @@ class LLMPipeline(AbstractLLMPipeline):
                     'num_trainable_params': stats.trainable_params,
                     'vocab_size': config.vocab_size,
                     'size': stats.total_param_bytes,
-                    'max_context_length': 20}
+                    'max_context_length': self._model.config.max_length}
         return analysis
 
     @report_time
@@ -184,7 +184,7 @@ class LLMPipeline(AbstractLLMPipeline):
         """
         if not self._model or not isinstance(sample, tuple):
             return None
-        return self._infer_batch(sample[0])[0]
+        return self._infer_batch([sample])[0]
 
     @report_time
     def infer_dataset(self) -> pd.DataFrame:
@@ -217,8 +217,10 @@ class LLMPipeline(AbstractLLMPipeline):
         """
         if not self._model:
             return ['']
-        inputs = self._tokenizer(sample_batch, return_tensors="pt", padding=True, truncation=True)
-        output = [str(torch.argmax(prediction).item()) for prediction in self._model(**inputs).logits]
+
+        inputs = self._tokenizer(sample_batch, return_tensors="pt", padding=True)
+        output = [str(torch.argmax(prediction).item())
+                  for prediction in self._model(**inputs).logits]
         return ["2" if label == "0" else label for label in output]
 
 
