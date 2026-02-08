@@ -29,6 +29,8 @@ def main() -> None:
     importer = RawDataImporter(settings['parameters']['dataset'])
     importer.obtain()
 
+    if importer.raw_data is None:
+        return
     preprocessor = RawDataPreprocessor(importer.raw_data)
     print('Dataset overview')
     for k, v in preprocessor.analyze().items():
@@ -47,10 +49,10 @@ def main() -> None:
 
     predictions_path = Path(__file__).parent / 'dist' / 'predictions.csv'
     predictions_path.parent.mkdir(exist_ok=True)
-    if not predictions_path.exists():
-        pipeline.infer_dataset().to_csv(predictions_path)
+    pipeline.infer_dataset().to_csv(predictions_path)
 
-    evaluator = TaskEvaluator(predictions_path, [Metrics(metric) for metric in settings['parameters']['metrics']])
+    evaluator = TaskEvaluator(predictions_path,
+                              [Metrics(metric) for metric in settings['parameters']['metrics']])
     result = evaluator.run()
     print(result)
 

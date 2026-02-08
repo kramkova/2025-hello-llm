@@ -155,8 +155,11 @@ class LLMPipeline(AbstractLLMPipeline):
         Returns:
             dict: Properties of a model
         """
+        if not isinstance(self._model, torch.nn.Module):
+            return {}
+
         config = self._model.config
-        ids = torch.ones(1, config.max_position_embeddings, dtype=torch.long)
+        ids = torch.ones(1, int(config.max_position_embeddings), dtype=torch.long)
         tokens = {"input_ids": ids, "attention_mask": ids}
         stats = summary(self._model, input_data=tokens, device=self._device, verbose=0)
         analysis = {'input_shape': {k: list(v) for k, v in stats.input_size.items()},
@@ -178,7 +181,6 @@ class LLMPipeline(AbstractLLMPipeline):
 
         Returns:
             str | None: A prediction
-            [('positive',)]
         """
         if not self._model or not isinstance(sample, tuple):
             return None
@@ -213,8 +215,11 @@ class LLMPipeline(AbstractLLMPipeline):
         Returns:
             list[str]: Model predictions as strings
         """
+        if not self._model:
+            return ['']
         inputs = self._tokenizer(sample_batch, return_tensors="pt", padding=True, truncation=True)
-        return [str(torch.argmax(prediction).item()) for prediction in self._model(**inputs).logits]
+        output = [str(torch.argmax(prediction).item()) for prediction in self._model(**inputs).logits]
+        return ["2" if label == "0" else label for label in output]
 
 
 class TaskEvaluator(AbstractTaskEvaluator):
