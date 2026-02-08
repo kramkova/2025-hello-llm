@@ -6,6 +6,7 @@ Starter for demonstration of laboratory work.
 import json
 from pathlib import Path
 
+from core_utils.llm.metrics import Metrics
 from core_utils.llm.time_decorator import report_time
 from lab_7_llm.main import (
     LLMPipeline,
@@ -49,7 +50,7 @@ def main() -> None:
     if not predictions_path.exists():
         pipeline.infer_dataset().to_csv(predictions_path)
 
-    evaluator = TaskEvaluator(predictions_path, settings['parameters']['metrics'])
+    evaluator = TaskEvaluator(predictions_path, [Metrics(metric) for metric in settings['parameters']['metrics']])
     result = evaluator.run()
     print(result)
 

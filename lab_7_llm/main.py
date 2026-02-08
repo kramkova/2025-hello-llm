@@ -241,10 +241,9 @@ class TaskEvaluator(AbstractTaskEvaluator):
             dict: A dictionary containing information about the calculated metric
         """
         data = pd.read_csv(self._data_path)
-        scores = {}
-
-        for metric in self._metrics:
-            scores[metric] = load(metric).compute(references=data[ColumnNames.TARGET.value],
-                                                  predictions=data[ColumnNames.PREDICTION.value],
-                                                  average='micro')
-        return scores
+        return {
+            metric.value: load(metric.value).compute(references=data[ColumnNames.TARGET.value],
+                                                     predictions=data[ColumnNames.PREDICTION.value],
+                                                     average='micro')[metric.value]
+            for metric in self._metrics
+        }
