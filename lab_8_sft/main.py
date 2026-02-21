@@ -4,17 +4,19 @@ Laboratory work.
 Fine-tuning Large Language Models for a downstream task.
 """
 
+from pathlib import Path
+from typing import Callable, Iterable, Sequence
+
 # pylint: disable=too-few-public-methods, undefined-variable, duplicate-code, unused-argument, too-many-arguments
 import datasets
 import pandas as pd
 import torch
+from evaluate import load
 from pandas import DataFrame
-from pathlib import Path
+from torch.utils.data import DataLoader, Dataset
 from torchinfo import summary
-from typing import Callable, Iterable, Sequence
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-from torch.utils.data import DataLoader, Dataset
 from core_utils.llm.llm_pipeline import AbstractLLMPipeline
 from core_utils.llm.metrics import Metrics
 from core_utils.llm.raw_data_importer import AbstractRawDataImporter
@@ -289,6 +291,8 @@ class TaskEvaluator(AbstractTaskEvaluator):
             data_path (pathlib.Path): Path to predictions
             metrics (Iterable[Metrics]): List of metrics to check
         """
+        self._data_path = data_path
+        self._metrics = metrics
 
     def run(self) -> dict:
         """
@@ -297,6 +301,13 @@ class TaskEvaluator(AbstractTaskEvaluator):
         Returns:
             dict: A dictionary containing information about the calculated metric
         """
+        data = pd.read_csv(self._data_path)
+        return {
+            metric.value: load(metric.value).compute(references=data[ColumnNames.TARGET.value],
+                                                     predictions=data[ColumnNames.PREDICTION.value]
+                                                     )[metric.value]
+            for metric in self._metrics
+        }
 
 
 class SFTPipeline(AbstractSFTPipeline):

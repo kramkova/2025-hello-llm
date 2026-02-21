@@ -6,8 +6,8 @@ Fine-tuning starter.
 import json
 from pathlib import Path
 
+from core_utils.llm.metrics import Metrics
 from core_utils.llm.time_decorator import report_time
-
 from lab_8_sft.main import (
     LLMPipeline,
     RawDataImporter,
@@ -44,10 +44,20 @@ def main() -> None:
     print('\nModel overview')
     for k, v in pipeline.analyze_model().items():
         print(f'{k}: {v}')
-    print('\nSample inference: ', pipeline.infer_sample(dataset[0]))
-    print('\nDataset inference: ', pipeline.infer_dataset())
 
-    result = pipeline
+    print('\nSample inference: ', pipeline.infer_sample(dataset[0]))
+    inference = pipeline.infer_dataset()
+    print('\nDataset inference: ', inference)
+
+    predictions_path = Path(__file__).parent / 'dist' / 'predictions.csv'
+    predictions_path.parent.mkdir(exist_ok=True)
+    inference.to_csv(predictions_path)
+
+    evaluator = TaskEvaluator(predictions_path,
+                              [Metrics(metric) for metric in settings['parameters']['metrics']])
+    result = evaluator.run()
+    for k, v in result.items():
+        print(f'{k}: {v}')
     assert result is not None, "Fine-tuning does not work correctly"
 
 
