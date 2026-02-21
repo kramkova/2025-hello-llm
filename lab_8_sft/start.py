@@ -44,8 +44,8 @@ def main() -> None:
     print('\nModel overview')
     for k, v in pipeline.analyze_model().items():
         print(f'{k}: {v}')
-    # pipeline.infer_sample(dataset[0])
-    # pipeline.infer_dataset()
+    print('\nSample inference: ', pipeline.infer_sample(dataset[0]))
+    print('\nDataset inference: ', pipeline.infer_dataset())
 
     result = pipeline
     assert result is not None, "Fine-tuning does not work correctly"
