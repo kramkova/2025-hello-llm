@@ -15,6 +15,7 @@ from lab_8_sft.main import (
     SFTPipeline,
     TaskDataset,
     TaskEvaluator,
+    TokenizedTaskDataset,
 )
 
 
@@ -55,8 +56,7 @@ def main() -> None:
 
     evaluator = TaskEvaluator(predictions_path,
                               [Metrics(metric) for metric in settings['parameters']['metrics']])
-    result = evaluator.run()
-    for k, v in result.items():
+    for k, v in evaluator.run().items():
         print(f'{k}: {v}')
     assert result is not None, "Fine-tuning does not work correctly"
 

@@ -137,7 +137,21 @@ def tokenize_sample(
 
     Returns:
         dict[str, torch.Tensor]: Tokenized sample
+        a dictionary with the input_ids, attention_mask and labels for current sample as keys
     """
+    source = tokenizer.from_pretrained(sample[ColumnNames.SOURCE],
+                                       padding="max_length",
+                                       truncation=True,
+                                       max_length=max_length)
+    target = tokenizer.from_pretrained(sample[ColumnNames.TARGET],
+                                       padding="max_length",
+                                       truncation=True,
+                                       max_length=max_length)
+    return {
+            "input_ids": source["input_ids"],
+            "attention_mask": source["attention_mask"],
+            "labels": target["input_ids"]
+    }
 
 
 class TokenizedTaskDataset(Dataset):
@@ -155,6 +169,9 @@ class TokenizedTaskDataset(Dataset):
                 tokenize the dataset
             max_length (int): max length of a sequence
         """
+        self._data = [tokenize_sample(row, tokenizer, max_length) for _, row in data.iterrows()]
+        self._tokenizer = tokenizer
+        self._max_length = max_length
 
     def __len__(self) -> int:
         """
@@ -163,6 +180,7 @@ class TokenizedTaskDataset(Dataset):
         Returns:
             int: The number of items in the dataset
         """
+        return len(self._data)
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
         """
@@ -174,6 +192,7 @@ class TokenizedTaskDataset(Dataset):
         Returns:
             dict[str, torch.Tensor]: An element from the dataset
         """
+        return self._data[index]
 
 
 class LLMPipeline(AbstractLLMPipeline):
@@ -211,7 +230,7 @@ class LLMPipeline(AbstractLLMPipeline):
         ids = torch.ones(1, embeddings_length, dtype=torch.long, device=self._device)
         stats = summary(self._model, input_data={"input_ids": ids, "decoder_input_ids": ids},
                         device=self._device, verbose=0)
-        analysis = {'input_shape': stats.input_size["input_ids"],
+        analysis = {'input_shape': torch.Size(stats.input_size["input_ids"]),
                     'embedding_size': embeddings_length,
                     'output_shape': stats.summary_list[-1].output_size,
                     'num_trainable_params': stats.trainable_params,
@@ -291,8 +310,7 @@ class TaskEvaluator(AbstractTaskEvaluator):
             data_path (pathlib.Path): Path to predictions
             metrics (Iterable[Metrics]): List of metrics to check
         """
-        self._data_path = data_path
-        self._metrics = metrics
+        super().__init__(data_path, metrics)
 
     def run(self) -> dict:
         """
@@ -311,11 +329,9 @@ class TaskEvaluator(AbstractTaskEvaluator):
         if Metrics.BLEU in self._metrics:
             bleu_metric = load("bleu")
 
-            references_for_bleu = [[ref] for ref in references]
-
             bleu_result = bleu_metric.compute(
                 predictions=predictions,
-                references=references_for_bleu
+                references=[[ref] for ref in references]
             )
             results["bleu"] = round(float(bleu_result["bleu"]), 6)
 
@@ -356,6 +372,7 @@ class SFTPipeline(AbstractSFTPipeline):
             data_collator (Callable[[AutoTokenizer], torch.Tensor] | None, optional): processing
                                                                     batch. Defaults to None.
         """
+        super().__init__(model_name, dataset, data_collator)
 
     def run(self) -> None:
         """
