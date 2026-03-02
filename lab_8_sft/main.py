@@ -13,6 +13,7 @@ import pandas as pd
 import torch
 from evaluate import load
 from pandas import DataFrame
+from peft import LoraConfig
 from torch.utils.data import DataLoader, Dataset
 from torchinfo import summary
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
@@ -284,9 +285,6 @@ class LLMPipeline(AbstractLLMPipeline):
         Returns:
             list[str]: model predictions as strings
         """
-        if not self._model:
-            return ['']
-
         inputs = self._tokenizer(sample_batch[0],
                                  return_tensors="pt",
                                  padding=True,
